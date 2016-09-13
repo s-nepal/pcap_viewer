@@ -25,6 +25,7 @@
 #include <string>
 #include <fstream>
 #include <vector>
+#include <stdlib.h>
 
 using namespace std;
 
@@ -48,10 +49,8 @@ struct data_packet {
 data_packet data_structure_builder(const struct pcap_pkthdr *header, const u_char *data); 
 int user_data;
 
-void 
-viewerOneOff (pcl::visualization::PCLVisualizer& viewer)
+void viewerOneOff (pcl::visualization::PCLVisualizer& viewer)
 {	
-
     viewer.setBackgroundColor (0,0,0); // black background
 	viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE,2,"cloud"); // size of point clouds
 	viewer.setRepresentationToSurfaceForAllActors();
@@ -59,38 +58,20 @@ viewerOneOff (pcl::visualization::PCLVisualizer& viewer)
 	viewer.initCameraParameters ();
 	viewer.setCameraPosition (-20, 0, 60, 0.0, 0, 100);
 	
-
-	// add labels for the 3 axes
-	/*pcl::PointXYZ pos;
-	pos.x = 20; pos.y = 0; pos.z = 0;
-	viewer.addText3D("x",pos,2,1.0,0.0,0.0,"x");
-	pos.x = 0; pos.y = 20; pos.z = 0;
-	viewer.addText3D("y",pos,2,0.0,7,0.0,"y");
-	pos.x = 0; pos.y = 0; pos.z = 20;
-	viewer.addText3D("z",pos,2,0.0,0.0,20,"z");*/
-	
     pcl::PointXYZ o;
     o.x = 0;
     o.y = 0;
     o.z = 0;
 
-   /* viewer.addSphere (o, 15, "sphere", 0);
-	viewer.addCube(-1,1,0,1,-1,1,1.0,1.0,1.0,"cube",0);
-    std::cout << "i only run once" << std::endl;*/
-    
 }
 
 
-void 
-viewerPsycho (pcl::visualization::PCLVisualizer& viewer)
+void viewerPsycho (pcl::visualization::PCLVisualizer& viewer)
 {
     static unsigned count = 0;
     std::stringstream ss;
     ss << "Once per viewer loop: " << count++;
     viewer.removeShape ("text", 0);
-    //viewer.addText (ss.str(), 200, 300, "text", 0);
-
-    //FIXME: possible race condition here:
     user_data++;	
 }
 
@@ -106,21 +87,11 @@ void packetHandler(u_char *userData, const struct pcap_pkthdr* pkthdr, const u_c
 
 int global_ctr = 0; // to print out the packet number
 
+pcl::visualization::CloudViewer viewer("Cloud Viewer"); // declare the viewer as a global variable
+
 int main() 
 {
-
-	// declare the point cloud class
-    pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZRGBA>);	
 	
-	pcl::PointXYZRGBA sample;
-
-	pcl::visualization::CloudViewer viewer("Cloud Viewer");
-
-    //blocks until the cloud is actually rendered
-    //viewer.showCloud(cloud);
-	viewer.runOnVisualizationThreadOnce (viewerOneOff);
-    viewer.runOnVisualizationThread (viewerPsycho);
-
   pcap_t *descr;
   char errbuf[PCAP_ERRBUF_SIZE];
 
@@ -131,12 +102,20 @@ int main()
       return 1;
   }
 
-  while(!viewer.wasStopped()){
-	  while(pcap_loop(descr, 0, packetHandler, NULL) >= 0){
-	  	// The loop will break once the entire .pcap file has been looped through
-	  	break;
-	  }
-	}
+
+  // while(pcap_loop(descr, 0, packetHandler, NULL) < 0){
+  // 	// The loop will break once the entire .pcap file has been looped through
+  // 	cout << "This loop entered" << endl;
+  // 	break;
+  // }
+
+	viewer.runOnVisualizationThreadOnce (viewerOneOff);
+    viewer.runOnVisualizationThread (viewerPsycho);
+
+  //while(!viewer.wasStopped()){
+    	pcap_loop(descr, 0, packetHandler, NULL);
+    //}
+
   
   cout << "capture finished" << endl;
 
@@ -147,17 +126,51 @@ void packetHandler(u_char *userData, const struct pcap_pkthdr* pkthdr, const u_c
 {
   
   // Print the contents of the packet
-  /*printf("\nPacket # %i\n", global_ctr++);
+  printf("\nPacket # %i\n", global_ctr++);
   for(int i = 0; i < pkthdr -> len; i++){
   	if((i % 16) == 0) printf("\n");
   	printf("%.2x ", packet[i]);
   }
 
-  // Double new lines after printing each packet
-  printf("\n\n");*/
+  //Double new lines after printing each packet
+  printf("\n\n");
 
-  data_packet processed_packet;
-  processed_packet = data_structure_builder(pkthdr, packet);
+  //declare the point cloud class
+    pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZRGBA>);	
+	
+	pcl::PointXYZRGBA sample;
+
+	for(int j = 0; j < 1000; j++){
+
+		int color = rand()%3;
+		sample.x = rand()%100 ;
+		sample.y = rand()%100 ;
+		sample.z = rand()%100 ;
+
+		if(color == 0){
+			sample.r = 255; sample.g = 0; sample.b = 0;
+		} else if(color == 1) {
+			sample.r = 0; sample.g = 255; sample.b = 0;
+		} else {
+			sample.r = 0; sample.g = 0; sample.b = 255;
+		}
+
+		cloud -> points.push_back(sample);
+	}
+	viewer.showCloud(cloud);
+	cloud -> points.clear();
+	delay();
+	
+	if(viewer.wasStopped()){
+		cout << "Viewer Stopped" << endl;
+		exit(0);
+	}
+    //blocks until the cloud is actually rendered
+    //viewer.showCloud(cloud);
+	
+	data_packet processed_packet;
+	processed_packet = data_structure_builder(pkthdr, packet);
+
 
   // // Accuracy check
   // for(int i = 0; i < 6; i++){
