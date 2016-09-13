@@ -62,7 +62,6 @@ void viewerOneOff (pcl::visualization::PCLVisualizer& viewer)
     o.x = 0;
     o.y = 0;
     o.z = 0;
-
 }
 
 
@@ -92,50 +91,40 @@ pcl::visualization::CloudViewer viewer("Cloud Viewer"); // declare the viewer as
 int main() 
 {
 	
-  pcap_t *descr;
-  char errbuf[PCAP_ERRBUF_SIZE];
+	pcap_t *descr;
+	char errbuf[PCAP_ERRBUF_SIZE];
 
-  // open capture file for offline processing
-  descr = pcap_open_offline("tire.pcap", errbuf);
-  if (descr == NULL) {
-      cout << "pcap_open_live() failed: " << errbuf << endl;
-      return 1;
-  }
-
-
-  // while(pcap_loop(descr, 0, packetHandler, NULL) < 0){
-  // 	// The loop will break once the entire .pcap file has been looped through
-  // 	cout << "This loop entered" << endl;
-  // 	break;
-  // }
+  	// open capture file for offline processing
+	descr = pcap_open_offline("tire.pcap", errbuf);
+  	if (descr == NULL) {
+     	cout << "pcap_open_live() failed: " << errbuf << endl;
+     	return 1;
+  	}
 
 	viewer.runOnVisualizationThreadOnce (viewerOneOff);
     viewer.runOnVisualizationThread (viewerPsycho);
 
-  //while(!viewer.wasStopped()){
-    	pcap_loop(descr, 0, packetHandler, NULL);
-    //}
+    pcap_loop(descr, 0, packetHandler, NULL);
+ 
+  	cout << "capture finished" << endl;
 
-  
-  cout << "capture finished" << endl;
-
-  return 0;
+  	return 0;
 }
 
 void packetHandler(u_char *userData, const struct pcap_pkthdr* pkthdr, const u_char* packet) 
 {
   
   // Print the contents of the packet
-  printf("\nPacket # %i\n", global_ctr++);
-  for(int i = 0; i < pkthdr -> len; i++){
-  	if((i % 16) == 0) printf("\n");
-  	printf("%.2x ", packet[i]);
-  }
+  	printf("\nPacket # %i\n", global_ctr++);
+  	for(int i = 0; i < pkthdr -> len; i++){
+  		if((i % 16) == 0) printf("\n");
+  			printf("%.2x ", packet[i]);
+  	}
 
-  //Double new lines after printing each packet
-  printf("\n\n");
+  	//Double new lines after printing each packet
+  	printf("\n\n");
 
-  //declare the point cloud class
+  	//declare the point cloud class
     pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZRGBA>);	
 	
 	pcl::PointXYZRGBA sample;
@@ -165,25 +154,9 @@ void packetHandler(u_char *userData, const struct pcap_pkthdr* pkthdr, const u_c
 		cout << "Viewer Stopped" << endl;
 		exit(0);
 	}
-    //blocks until the cloud is actually rendered
-    //viewer.showCloud(cloud);
-	
+    
 	data_packet processed_packet;
 	processed_packet = data_structure_builder(pkthdr, packet);
-
-
-  // // Accuracy check
-  // for(int i = 0; i < 6; i++){
-  // 	//if((i % 16) == 0) printf("\n");
-  // 	//cout << i << endl;
-  // 	//for(int j = 0; j < 32; j++){
-  // 		printf("%.2x ", processed_packet.footer[i]);
-  // 		//cout << processed_packet.payload[i].dist[j];
-  // 		printf("\n");
-  // 	///}
-  // 	//while(1);	
-  // }
-  // while(1);
 }
 
 
