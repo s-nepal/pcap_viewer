@@ -81,7 +81,6 @@ void delay()
 	}
 }
 
-
 void packetHandler(u_char *userData, const struct pcap_pkthdr* pkthdr, const u_char* packet);
 
 int global_ctr = 0; // to print out the packet number
@@ -89,8 +88,7 @@ int global_ctr = 0; // to print out the packet number
 pcl::visualization::CloudViewer viewer("Cloud Viewer"); // declare the viewer as a global variable
 
 int main() 
-{
-	
+{	
 	pcap_t *descr;
 	char errbuf[PCAP_ERRBUF_SIZE];
 
@@ -104,6 +102,7 @@ int main()
 	viewer.runOnVisualizationThreadOnce (viewerOneOff);
     viewer.runOnVisualizationThread (viewerPsycho);
 
+    //loop through the pcap file and extract the packets
     pcap_loop(descr, 0, packetHandler, NULL);
  
   	cout << "capture finished" << endl;
@@ -114,7 +113,7 @@ int main()
 void packetHandler(u_char *userData, const struct pcap_pkthdr* pkthdr, const u_char* packet) 
 {
   
-  // Print the contents of the packet
+  	/*// Print the contents of the packet
   	printf("\nPacket # %i\n", global_ctr++);
   	for(int i = 0; i < pkthdr -> len; i++){
   		if((i % 16) == 0) printf("\n");
@@ -122,15 +121,20 @@ void packetHandler(u_char *userData, const struct pcap_pkthdr* pkthdr, const u_c
   	}
 
   	//Double new lines after printing each packet
-  	printf("\n\n");
+  	printf("\n\n");*/
+
+	//assign the packaged ethernet data to the struct
+	data_packet processed_packet = data_structure_builder(pkthdr, packet);
+
+	//insert function here to extract xyz from processed_packet and return the sample struct
 
   	//declare the point cloud class
     pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZRGBA>);	
 	
+	//declare the intermediate variable
 	pcl::PointXYZRGBA sample;
 
 	for(int j = 0; j < 1000; j++){
-
 		int color = rand()%3;
 		sample.x = rand()%100 ;
 		sample.y = rand()%100 ;
@@ -150,21 +154,18 @@ void packetHandler(u_char *userData, const struct pcap_pkthdr* pkthdr, const u_c
 	cloud -> points.clear();
 	delay();
 	
+	//end the program if the viewer was closed by the user
 	if(viewer.wasStopped()){
 		cout << "Viewer Stopped" << endl;
 		exit(0);
-	}
-    
-	data_packet processed_packet;
-	processed_packet = data_structure_builder(pkthdr, packet);
+	}    
 }
 
 
 // function definiton for data_structure_builder
 data_packet data_structure_builder(const struct pcap_pkthdr *pkthdr, const u_char *data)
 {
-    //printf("Packet size: %d bytes\n", pkthdr->len);
-		
+    //printf("Packet size: %d bytes\n", pkthdr->len);		
     if (pkthdr->len != pkthdr->caplen)
         printf("Warning! Capture size different than packet size: %ld bytes\n", (long)pkthdr->len);
 
