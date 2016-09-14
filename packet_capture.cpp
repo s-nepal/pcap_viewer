@@ -26,8 +26,11 @@
 #include <fstream>
 #include <vector>
 #include <stdlib.h>
+#include <math.h>
 
 using namespace std;
+
+#define PI 3.14159265
 
 // Define the structs needed to decode ethernet packets
 struct fire_data {
@@ -50,10 +53,11 @@ struct data_packet data_structure_builder(const struct pcap_pkthdr *header, cons
 pcl::PointCloud<pcl::PointXYZRGBA>::Ptr extract_xyz(data_packet processed_packet);
 
 int user_data;
+const int cycle_num = 581;
 
 void viewerOneOff (pcl::visualization::PCLVisualizer& viewer)
 {	
-    viewer.setBackgroundColor (0,0,0); // black background
+    viewer.setBackgroundColor (255,255,255); // black background
 	viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE,2,"cloud"); // size of point clouds
 	viewer.setRepresentationToSurfaceForAllActors();
 	viewer.addCoordinateSystem (4);
@@ -78,8 +82,8 @@ void viewerPsycho (pcl::visualization::PCLVisualizer& viewer)
 
 void delay()
 {
-	for(int i = 0; i < 30000; i++){
-		for (int j = 0; j < 10000; j++){}
+	for(int i = 0; i < 40; i++){
+		for (int j = 0; j < 100; j++){}
 	}
 }
 
@@ -109,12 +113,17 @@ int main()
  
   	cout << "capture finished" << endl;
 
+  	int x = 0;
+
+  	while(x == 0)
+	 cin >> x;
+
   	return 0;
 }
 
 void packetHandler(u_char *userData, const struct pcap_pkthdr* pkthdr, const u_char* packet) 
 {
-  
+  	//cout << global_ctr++ << endl;
   	/*// Print the contents of the packet
   	printf("\nPacket # %i\n", global_ctr++);
   	for(int i = 0; i < pkthdr -> len; i++){
@@ -133,26 +142,28 @@ void packetHandler(u_char *userData, const struct pcap_pkthdr* pkthdr, const u_c
 	cloud = extract_xyz(processed_packet);
 	
 	//declare the intermediate variable
-	pcl::PointXYZRGBA sample;
+	// pcl::PointXYZRGBA sample;
 
-	for(int j = 0; j < 1000; j++){
-		int color = rand()%3;
-		sample.x = rand()%100 ;
-		sample.y = rand()%100 ;
-		sample.z = rand()%100 ;
+	// for(int j = 0; j < 1000; j++){
+	// 	int color = rand()%3;
+	// 	sample.x = rand()%100 ;
+	// 	sample.y = rand()%100 ;
+	// 	sample.z = rand()%100 ;
 
-		if(color == 0){
-			sample.r = 255; sample.g = 0; sample.b = 0;
-		} else if(color == 1) {
-			sample.r = 0; sample.g = 255; sample.b = 0;
-		} else {
-			sample.r = 0; sample.g = 0; sample.b = 255;
-		}
+	// 	if(color == 0){
+	// 		sample.r = 255; sample.g = 0; sample.b = 0;
+	// 	} else if(color == 1) {
+	// 		sample.r = 0; sample.g = 255; sample.b = 0;
+	// 	} else {
+	// 		sample.r = 0; sample.g = 0; sample.b = 255;
+	// 	}
 
-		cloud -> points.push_back(sample);
-	}
-	viewer.showCloud(cloud);
-	cloud -> points.clear();
+	// 	cloud -> points.push_back(sample);
+	// }
+	
+	if(global_ctr == cycle_num) //buffer
+		viewer.showCloud(cloud);
+	
 	delay();
 	
 	//end the program if the viewer was closed by the user
@@ -217,16 +228,26 @@ struct data_packet data_structure_builder(const struct pcap_pkthdr *pkthdr, cons
 //Output: Pointer to a cloud
 pcl::PointCloud<pcl::PointXYZRGBA>::Ptr extract_xyz(struct data_packet processed_packet)
 {
-	// do nothing for now
-	pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZRGBA>);	
+	static pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZRGBA>);	
 	pcl::PointXYZRGBA sample;
 
-	sample.x = 84;
-	sample.y = 84;
-	sample.z = 84;
+	for(int i = 0; i < 12; i++){
+		double curr_azimuth = (processed_packet.payload[i].azimuth) * PI / 180; //convert degrees to radians
+		for(int j = 0; j < 32; j++){
+			double curr_dist = processed_packet.payload[i].dist[j];
+			sample.x = curr_dist * sin(curr_azimuth);
+			sample.y = curr_dist * cos(curr_azimuth);
+			sample.z = 0;
+			sample.r = 255; sample.g = 0; sample.b = 0;
+			cloud -> points.push_back(sample);
+		}
+	}
 
-	
-	cloud -> points.push_back(sample);
+	if(global_ctr > cycle_num){
+		cloud -> points.clear();
+		global_ctr = 0;
+	}
+	global_ctr++;
 
 	return cloud;
 }
