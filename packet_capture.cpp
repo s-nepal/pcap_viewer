@@ -46,7 +46,9 @@ struct data_packet {
 //Define the data structure builder function
 //Input: 1248 byte long UDP data packet
 //Output: Pointer to the data structure
-data_packet data_structure_builder(const struct pcap_pkthdr *header, const u_char *data); 
+struct data_packet data_structure_builder(const struct pcap_pkthdr *header, const u_char *data);
+pcl::PointCloud<pcl::PointXYZRGBA>::Ptr extract_xyz(data_packet processed_packet);
+
 int user_data;
 
 void viewerOneOff (pcl::visualization::PCLVisualizer& viewer)
@@ -124,12 +126,11 @@ void packetHandler(u_char *userData, const struct pcap_pkthdr* pkthdr, const u_c
   	printf("\n\n");*/
 
 	//assign the packaged ethernet data to the struct
-	data_packet processed_packet = data_structure_builder(pkthdr, packet);
+	struct data_packet processed_packet = data_structure_builder(pkthdr, packet);
 
-	//insert function here to extract xyz from processed_packet and return the sample struct
-
-  	//declare the point cloud class
-    pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZRGBA>);	
+	//insert function here to extract xyz from processed_packet and return the cloud to be visualized below
+	pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZRGBA>);
+	cloud = extract_xyz(processed_packet);
 	
 	//declare the intermediate variable
 	pcl::PointXYZRGBA sample;
@@ -163,7 +164,7 @@ void packetHandler(u_char *userData, const struct pcap_pkthdr* pkthdr, const u_c
 
 
 // function definiton for data_structure_builder
-data_packet data_structure_builder(const struct pcap_pkthdr *pkthdr, const u_char *data)
+struct data_packet data_structure_builder(const struct pcap_pkthdr *pkthdr, const u_char *data)
 {
     //printf("Packet size: %d bytes\n", pkthdr->len);		
     if (pkthdr->len != pkthdr->caplen)
@@ -209,4 +210,23 @@ data_packet data_structure_builder(const struct pcap_pkthdr *pkthdr, const u_cha
 	}
 
 	return first;
+}
+
+//Extracts xyz co-ordinates from processed_packet
+//Input: Main Struct
+//Output: Pointer to a cloud
+pcl::PointCloud<pcl::PointXYZRGBA>::Ptr extract_xyz(struct data_packet processed_packet)
+{
+	// do nothing for now
+	pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZRGBA>);	
+	pcl::PointXYZRGBA sample;
+
+	sample.x = 84;
+	sample.y = 84;
+	sample.z = 84;
+
+	
+	cloud -> points.push_back(sample);
+
+	return cloud;
 }
