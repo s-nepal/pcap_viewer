@@ -54,14 +54,21 @@ pcl::PointCloud<pcl::PointXYZRGBA>::Ptr extract_xyz(data_packet processed_packet
 int user_data;
 const int cycle_num = 581;
 
+// list elevation angles corresponding to each of the 32 laser beams
+const double elev_angles[32] = {-30.67, -9.33, -29.33, -8, -28, -6.66,
+        -26.66, -5.33, -25.33, -4, -24, -2.67, -22.67, -1.33, -21.33,
+        0, -20, 1.33, -18.67, 2.67, -17.33, 4, -16, 5.33, -14.67, 6.67,
+        -13.33, 8, -12, 9.33, -10.67, 10.67 };
+
 void viewerOneOff (pcl::visualization::PCLVisualizer& viewer)
 {	
     viewer.setBackgroundColor (255,255,255); // black background
 	viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE,2,"cloud"); // size of point clouds
 	viewer.setRepresentationToSurfaceForAllActors();
-	viewer.addCoordinateSystem (4);
+	viewer.addCoordinateSystem (8);
 	viewer.initCameraParameters ();
-	viewer.setCameraPosition (-20, 0, 60, 0.0, 0, 100);
+	//viewer.setCameraPosition (0, 0, 100, 0, 0, 0);
+	//viewer.resetCamera();
 	
     pcl::PointXYZ o;
     o.x = 0;
@@ -99,7 +106,7 @@ int main()
 	char errbuf[PCAP_ERRBUF_SIZE];
 
   	// open capture file for offline processing
-	descr = pcap_open_offline("Sample_2.pcap", errbuf);
+	descr = pcap_open_offline("Sample_1.pcap", errbuf);
   	if (descr == NULL) {
      	cout << "pcap_open_live() failed: " << errbuf << endl;
      	return 1;
@@ -113,53 +120,21 @@ int main()
  
   	cout << "capture finished" << endl;
 
-  	int x = 0;
-
-  	while(x == 0)
-	 cin >> x;
+  	while(!viewer.wasStopped()){
+  		//do nothing
+  	}
 
   	return 0;
 }
 
 void packetHandler(u_char *userData, const struct pcap_pkthdr* pkthdr, const u_char* packet) 
 {
-  	//cout << global_ctr++ << endl;
-  	/*// Print the contents of the packet
-  	printf("\nPacket # %i\n", global_ctr++);
-  	for(int i = 0; i < pkthdr -> len; i++){
-  		if((i % 16) == 0) printf("\n");
-  			printf("%.2x ", packet[i]);
-  	}
-
-  	//Double new lines after printing each packet
-  	printf("\n\n");*/
-
 	//assign the packaged ethernet data to the struct
 	struct data_packet processed_packet = data_structure_builder(pkthdr, packet);
 
 	//insert function here to extract xyz from processed_packet and return the cloud to be visualized below
 	pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZRGBA>);
 	cloud = extract_xyz(processed_packet);
-	
-	//declare the intermediate variable
-	// pcl::PointXYZRGBA sample;
-
-	// for(int j = 0; j < 1000; j++){
-	// 	int color = rand()%3;
-	// 	sample.x = rand()%100 ;
-	// 	sample.y = rand()%100 ;
-	// 	sample.z = rand()%100 ;
-
-	// 	if(color == 0){
-	// 		sample.r = 255; sample.g = 0; sample.b = 0;
-	// 	} else if(color == 1) {
-	// 		sample.r = 0; sample.g = 255; sample.b = 0;
-	// 	} else {
-	// 		sample.r = 0; sample.g = 0; sample.b = 255;
-	// 	}
-
-	// 	cloud -> points.push_back(sample);
-	// }
 	
 	if(global_ctr == cycle_num) //buffer
 		viewer.showCloud(cloud);
@@ -184,12 +159,10 @@ struct data_packet data_structure_builder(const struct pcap_pkthdr *pkthdr, cons
 	// define the main struct
 	struct data_packet first;
 
-	//assert(pkthdr -> len == 1248);
-
+	// return an empty struct if the packet length is not 1248 bytes
 	if(pkthdr -> len != 1248){
 		return (const struct data_packet){0};
 	}
-
 			
 	for(int i = 0; i < 42; i++){
 		first.header[i] = data[i]; // fill in the header
@@ -208,12 +181,9 @@ struct data_packet data_structure_builder(const struct pcap_pkthdr *pkthdr, cons
 	for(int i = 0; i < 12; i++){
 		for(int j = 0; j < 100; j++){
 			curr_firing_data[j] = data[j + curr_byte_index];
-			//cout << (double)curr_firing_data[j] << endl;
 		}
 		temp[i].block_id = (curr_firing_data[1] << 8) | (curr_firing_data[0]);
 		temp[i].azimuth = (double)((curr_firing_data[3] << 8) | (curr_firing_data[2])) / 100;
-
-		/*cout << temp[0].block_id << " " << temp[0].azimuth << endl;*/
 
 		int ctr = 0;
 		for(int j = 0; j < 32; j++){
@@ -240,9 +210,10 @@ pcl::PointCloud<pcl::PointXYZRGBA>::Ptr extract_xyz(struct data_packet processed
 		double curr_azimuth = (processed_packet.payload[i].azimuth) * PI / 180; //convert degrees to radians
 		for(int j = 0; j < 32; j++){
 			double curr_dist = processed_packet.payload[i].dist[j];
+			double curr_elev_angle = (elev_angles[j]) * PI / 180;
 			sample.x = curr_dist * sin(curr_azimuth);
 			sample.y = curr_dist * cos(curr_azimuth);
-			sample.z = 0;
+			sample.z = curr_dist * sin(curr_elev_angle);
 			sample.r = 255; sample.g = 0; sample.b = 0;
 			cloud -> points.push_back(sample);
 		}
