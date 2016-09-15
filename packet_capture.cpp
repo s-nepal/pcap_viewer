@@ -21,7 +21,6 @@
 #include <pcl/range_image/range_image.h>
 #include <pcl/visualization/range_image_visualizer.h>
 
-
 #include <string>
 #include <fstream>
 #include <vector>
@@ -82,11 +81,12 @@ void viewerPsycho (pcl::visualization::PCLVisualizer& viewer)
 
 void delay()
 {
-	for(int i = 0; i < 40; i++){
+	for(int i = 0; i < 800; i++){
 		for (int j = 0; j < 100; j++){}
 	}
 }
 
+// function declaration for packetHandler
 void packetHandler(u_char *userData, const struct pcap_pkthdr* pkthdr, const u_char* packet);
 
 int global_ctr = 0; // to print out the packet number
@@ -99,7 +99,7 @@ int main()
 	char errbuf[PCAP_ERRBUF_SIZE];
 
   	// open capture file for offline processing
-	descr = pcap_open_offline("tire.pcap", errbuf);
+	descr = pcap_open_offline("Sample_2.pcap", errbuf);
   	if (descr == NULL) {
      	cout << "pcap_open_live() failed: " << errbuf << endl;
      	return 1;
@@ -181,10 +181,15 @@ struct data_packet data_structure_builder(const struct pcap_pkthdr *pkthdr, cons
     if (pkthdr->len != pkthdr->caplen)
         printf("Warning! Capture size different than packet size: %ld bytes\n", (long)pkthdr->len);
 
-	assert(pkthdr -> len == 1248);
-
 	// define the main struct
 	struct data_packet first;
+
+	//assert(pkthdr -> len == 1248);
+
+	if(pkthdr -> len != 1248){
+		return (const struct data_packet){0};
+	}
+
 			
 	for(int i = 0; i < 42; i++){
 		first.header[i] = data[i]; // fill in the header
